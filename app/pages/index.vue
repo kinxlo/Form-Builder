@@ -1,23 +1,45 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import FormBuilder from '~/components/form-builder/FormBuilder.vue'
 import type { FormSchema } from '~/lib/form-builder/types'
 import { sampleSchema } from '~/lib/sample-schema'
+import { parseFormSchemaInput } from '~/lib/parse-form-schema-input'
+import { Button } from '~/components/ui/button'
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '~/components/ui/card'
 
-const fetchedAt = useState<string>('schemaFetchedAt', () =>
-  new Date().toISOString(),
-)
+const schemaInput = ref<string>(JSON.stringify(sampleSchema, null, 2))
+const parsedSchema = ref<FormSchema | null>(null)
+const parseError = ref<string | null>(null)
+const parsedMode = ref<'json' | 'object-literal' | null>(null)
 
-const {
-  data: schemaData,
-  pending: schemaPending,
-  error: schemaError,
-  refresh: refreshSchema,
-} = await useFetch<FormSchema>('/sample-schema.json', {
-  server: true,
-})
+function handleParseClick() {
+  parseError.value = null
+  try {
+    const { schema, mode } = parseFormSchemaInput(schemaInput.value)
+    parsedSchema.value = schema
+    parsedMode.value = mode
+  } catch (err) {
+    parsedSchema.value = null
+    parsedMode.value = null
+    parseError.value = err instanceof Error ? err.message : String(err)
+  }
+}
 
-const schema = computed<FormSchema>(() => schemaData.value ?? sampleSchema)
+function resetToSample() {
+  schemaInput.value = JSON.stringify(sampleSchema, null, 2)
+  parsedSchema.value = null
+  parsedMode.value = null
+  parseError.value = null
+}
+
+// IMPORTANT: Do not render the dynamic form until the user explicitly clicks Parse.
+const schema = computed<FormSchema | null>(() => parsedSchema.value)
 
 const sections = [
   {
@@ -62,6 +84,44 @@ const sections = [
 
 <template>
   <div>
+    <Card class="mb-6 shadow-none">
+      <CardHeader class="border-b">
+        <CardTitle class="text-base">Schema input</CardTitle>
+        <CardDescription>
+          JSON schema parser
+        </CardDescription>
+      </CardHeader>
+
+      <CardContent class="space-y-4 pt-6">
+        <div class="space-y-2">
+          <label class="text-sm font-bold">Schema Area</label>
+          <textarea
+            v-model="schemaInput"
+            class="min-h-65 w-full rounded-md border bg-background p-3 font-mono text-xs leading-relaxed"
+            spellcheck="false"
+          />
+          <p class="text-xs text-muted-foreground">
+            PPaste your JSON schema or TS/JS object here.
+          </p>
+        </div>
+
+        <div class="flex flex-wrap gap-2">
+          <Button type="button" @click="handleParseClick">Parse</Button>
+          <Button type="button" variant="secondary" @click="resetToSample">
+            Reset to sample
+          </Button>
+        </div>
+
+        <p v-if="parseError" class="text-sm text-destructive">
+          {{ parseError }}
+        </p>
+        <p v-else-if="parsedMode" class="text-xs text-muted-foreground">
+          Parsed successfully (mode: <code>{{ parsedMode }}</code
+          >).
+        </p>
+      </CardContent>
+    </Card>
+
     <!-- <div class="mb-4 rounded-lg border bg-muted/30 p-3 text-xs">
       <p class="font-medium">SSR demo (server fetch + client hydration)</p>
       <p v-if="schemaPending">
@@ -84,6 +144,6 @@ const sections = [
       </p>
     </div> -->
 
-    <FormBuilder :schema="schema" :sections="sections" />
+    <FormBuilder v-if="schema" :schema="schema" :sections="sections" />
   </div>
 </template>
