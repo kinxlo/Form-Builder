@@ -23,4 +23,4 @@ Open:
 
 ## Tests
 
-See: [`docs/tests.md`](docs/tests.md)
+See: [`tests.md`](tests.md)

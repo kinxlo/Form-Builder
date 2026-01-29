@@ -3,73 +3,72 @@
 ## Where the implementation lives
 
 - Reusable form builder UI:
-- Reusable form builder UI:
-  - [`app/components/form-builder/FormBuilder.vue`](app/components/form-builder/FormBuilder.vue:1)
-  - [`app/components/form-builder/FormField.vue`](app/components/form-builder/FormField.vue:1)
+  - [`app/components/form-builder/FormBuilder.vue`](../app/components/form-builder/FormBuilder.vue#L1)
+  - [`app/components/form-builder/FormField.vue`](../app/components/form-builder/FormField.vue#L1)
 - Form-builder logic (composable + helpers):
-  - [`useFormBuilder()`](app/lib/form-builder/useFormBuilder.ts:24) CORE Business Logic
-  - [`validation`](app/lib/form-builder/validation.ts:1)
-  - [`dependent options`](app/lib/form-builder/dependent-options.ts:1)
-  - [`schema facade`](app/lib/form-builder/schema.ts:1)
-  - [`types`](app/lib/form-builder/types.ts:1)
-- Schema parsing (legacy location, still source of truth): [`app/lib/schema-parser.ts`](app/lib/schema-parser.ts:1) CORE Business Logic (OLD)
-- Example schema provided: [`app/lib/sample-schema.ts`](app/lib/sample-schema.ts:1)
-- Demo page (includes demo-only sections/grouping): [`app/pages/index.vue`](app/pages/index.vue:1)
+  - [`useFormBuilder()`](../app/lib/form-builder/useFormBuilder.ts#L24) CORE Business Logic
+  - [`validation`](../app/lib/form-builder/validation.ts#L1)
+  - [`dependent options`](../app/lib/form-builder/dependent-options.ts#L1)
+  - [`schema facade`](../app/lib/form-builder/schema.ts#L1)
+  - [`types`](../app/lib/form-builder/types.ts#L1)
+- Schema parsing (legacy location, still source of truth): [`app/lib/schema-parser.ts`](../app/lib/schema-parser.ts#L1) CORE Business Logic (OLD)
+- Example schema provided: [`app/lib/sample-schema.ts`](../app/lib/sample-schema.ts#L1)
+- Demo page (includes demo-only sections/grouping): [`app/pages/index.vue`](../app/pages/index.vue#L1)
 
 ## Data flow (schema textarea → rendered form)
 
 ### Step-by-step
 
 1. **User edits the schema textarea** on the demo page.
-   - The textarea is bound via `v-model` to `schemaInput` in [`app/pages/index.vue`](app/pages/index.vue:16).
+   - The textarea is bound via `v-model` to `schemaInput` in [`app/pages/index.vue`](../app/pages/index.vue#L16).
 
 2. **User clicks “Parse”**.
-   - The click handler [`handleParseClick()`](app/pages/index.vue:21) runs.
+   - The click handler [`handleParseClick()`](../app/pages/index.vue#L21) runs.
 
 3. **Schema parsing (string → `FormSchema`)**.
-   - [`handleParseClick()`](app/pages/index.vue:21) calls [`parseFormSchemaInput()`](app/lib/parse-form-schema-input.ts:91).
-   - [`parseFormSchemaInput()`](app/lib/parse-form-schema-input.ts:91) tries:
+   - [`handleParseClick()`](../app/pages/index.vue#L21) calls [`parseFormSchemaInput()`](../app/lib/parse-form-schema-input.ts#L91).
+   - [`parseFormSchemaInput()`](../app/lib/parse-form-schema-input.ts#L91) tries:
      - `JSON.parse(...)` (strict JSON) and validates shape via `assertLooksLikeFormSchema(...)`.
      - If JSON parsing fails: extracts a `{ ... }` object literal and evaluates it with `Function(...)`.
    - Output: `{ schema, mode }` where `schema` is a validated `FormSchema`.
 
 4. **Parsed schema becomes reactive state**.
-   - [`handleParseClick()`](app/pages/index.vue:21) stores the parsed result into `parsedSchema`.
-   - `schema` is a `computed` wrapper over `parsedSchema` (so it can be `null` until Parse is clicked) in [`app/pages/index.vue`](app/pages/index.vue:42).
+   - [`handleParseClick()`](../app/pages/index.vue#L21) stores the parsed result into `parsedSchema`.
+   - `schema` is a `computed` wrapper over `parsedSchema` (so it can be `null` until Parse is clicked) in [`app/pages/index.vue`](../app/pages/index.vue#L42).
 
 5. **Rendering is unblocked**.
-   - The template uses `<FormBuilder v-if="schema" :schema="schema" ... />` in [`app/pages/index.vue`](app/pages/index.vue:122).
-   - Once `schema !== null`, Vue mounts [`app/components/form-builder/FormBuilder.vue`](app/components/form-builder/FormBuilder.vue:1).
+   - The template uses `<FormBuilder v-if="schema" :schema="schema" ... />` in [`app/pages/index.vue`](../app/pages/index.vue#L122).
+   - Once `schema !== null`, Vue mounts [`app/components/form-builder/FormBuilder.vue`](../app/components/form-builder/FormBuilder.vue#L1).
 
 6. **Schema → `FormFieldConfig[]` (core form-building step)**.
-   - `FormBuilder` initializes its composable by calling [`useFormBuilder()`](app/lib/form-builder/useFormBuilder.ts:24).
-   - Inside [`useFormBuilder()`](app/lib/form-builder/useFormBuilder.ts:24), a `watch(..., { immediate: true })` runs and calls `initializeForm()` in [`app/lib/form-builder/useFormBuilder.ts`](app/lib/form-builder/useFormBuilder.ts:43).
-   - [`initializeForm()`](app/lib/form-builder/useFormBuilder.ts:43) calls [`parseSchema()`](app/lib/schema-parser.ts:39) (imported via the facade at [`app/lib/form-builder/schema.ts`](app/lib/form-builder/schema.ts:5)).
-   - [`parseSchema()`](app/lib/schema-parser.ts:39) iterates `schema.properties` and converts each field via `parseFieldSchema(...)` in [`app/lib/schema-parser.ts`](app/lib/schema-parser.ts:211), producing a normalized `FormFieldConfig`.
-   - The resulting fields are sorted (stable) by `x-order` in [`parseSchema()`](app/lib/schema-parser.ts:39).
+   - `FormBuilder` initializes its composable by calling [`useFormBuilder()`](../app/lib/form-builder/useFormBuilder.ts#L24).
+   - Inside [`useFormBuilder()`](../app/lib/form-builder/useFormBuilder.ts#L24), a `watch(..., { immediate: true })` runs and calls `initializeForm()` in [`app/lib/form-builder/useFormBuilder.ts`](../app/lib/form-builder/useFormBuilder.ts#L43).
+   - [`initializeForm()`](../app/lib/form-builder/useFormBuilder.ts#L43) calls [`parseSchema()`](../app/lib/schema-parser.ts#L39) (imported via the facade at [`app/lib/form-builder/schema.ts`](../app/lib/form-builder/schema.ts#L1)).
+   - [`parseSchema()`](../app/lib/schema-parser.ts#L39) iterates `schema.properties` and converts each field via `parseFieldSchema(...)` in [`app/lib/schema-parser.ts`](../app/lib/schema-parser.ts#L211), producing a normalized `FormFieldConfig`.
+   - The resulting fields are sorted (stable) by `x-order` in [`parseSchema()`](../app/lib/schema-parser.ts#L39).
 
 7. **Field configs become UI**.
-   - `fields.value` (from [`useFormBuilder()`](app/lib/form-builder/useFormBuilder.ts:24)) is consumed by `FormBuilder`, which renders per-field UI through [`app/components/form-builder/FormField.vue`](app/components/form-builder/FormField.vue:1).
+   - `fields.value` (from [`useFormBuilder()`](../app/lib/form-builder/useFormBuilder.ts#L24)) is consumed by `FormBuilder`, which renders per-field UI through [`app/components/form-builder/FormField.vue`](../app/components/form-builder/FormField.vue#L1).
 
 8. **User input updates form state**.
-   - When a user types/selects/uploads, `FormBuilder/FormField` call [`handleFieldChange()`](app/lib/form-builder/useFormBuilder.ts:77) to update `values`.
-   - If the changed field is a dependency parent, dependent child fields are cleared in [`handleFieldChange()`](app/lib/form-builder/useFormBuilder.ts:77).
+   - When a user types/selects/uploads, `FormBuilder/FormField` call [`handleFieldChange()`](../app/lib/form-builder/useFormBuilder.ts#L77) to update `values`.
+   - If the changed field is a dependency parent, dependent child fields are cleared in [`handleFieldChange()`](../app/lib/form-builder/useFormBuilder.ts#L77).
 
 9. **Dependent dropdown options (if applicable)**.
-   - Field option lists are read through [`getDependentOptions()`](app/lib/form-builder/useFormBuilder.ts:175), which delegates to [`getDependentOptionsForField()`](app/lib/form-builder/dependent-options.ts:1).
-   - The schema-derived `dependsOn` + `dependentOptions` map are produced during `parseFieldSchema(...)` in [`app/lib/schema-parser.ts`](app/lib/schema-parser.ts:211).
+   - Field option lists are read through [`getDependentOptions()`](../app/lib/form-builder/useFormBuilder.ts#L175), which delegates to [`getDependentOptionsForField()`](../app/lib/form-builder/dependent-options.ts#L1).
+   - The schema-derived `dependsOn` + `dependentOptions` map are produced during `parseFieldSchema(...)` in [`app/lib/schema-parser.ts`](../app/lib/schema-parser.ts#L211).
 
 10. **Submit → validation → payload**.
 
-- On submit, [`handleSubmit()`](app/lib/form-builder/useFormBuilder.ts:124) runs:
-  - Calls `validateForm()` in [`app/lib/form-builder/useFormBuilder.ts`](app/lib/form-builder/useFormBuilder.ts:103).
-  - Per-field validation uses [`validateField()`](app/lib/form-builder/validation.ts:1).
+- On submit, [`handleSubmit()`](../app/lib/form-builder/useFormBuilder.ts#L124) runs:
+  - Calls `validateForm()` in [`app/lib/form-builder/useFormBuilder.ts`](../app/lib/form-builder/useFormBuilder.ts#L103).
+  - Per-field validation uses [`validateField()`](../app/lib/form-builder/validation.ts#L1).
   - “Required?” is computed by combining:
-    - JSON Schema conditionals via [`getConditionalRequiredFieldNames()`](app/lib/schema-parser.ts:133)
-    - custom `x-required_if` via [`isFieldConditionallyRequired()`](app/lib/schema-parser.ts:353)
+    - JSON Schema conditionals via [`getConditionalRequiredFieldNames()`](../app/lib/schema-parser.ts#L133)
+    - custom `x-required_if` via [`isFieldConditionallyRequired()`](../app/lib/schema-parser.ts#L353)
     - schema-level `required` from `parseSchema(...)` → `field.isRequired`
-  - Values are normalized via `normalizeValueForSubmit(...)` in [`app/lib/form-builder/validation.ts`](app/lib/form-builder/validation.ts:1).
-  - Files are converted to metadata for display (`{ name, size, type }`) inside [`handleSubmit()`](app/lib/form-builder/useFormBuilder.ts:124).
+  - Values are normalized via `normalizeValueForSubmit(...)` in [`app/lib/form-builder/validation.ts`](../app/lib/form-builder/validation.ts#L12).
+  - Files are converted to metadata for display (`{ name, size, type }`) inside [`handleSubmit()`](../app/lib/form-builder/useFormBuilder.ts#L124).
 
 ### Diagram
 
