@@ -23,64 +23,64 @@ function assertLooksLikeFormSchema(
 }
 
 function extractFirstObjectLiteral(source: string): string | null {
-  // Try to locate an assignment first:
-  // - export const sampleSchema: FormSchema = { ... }
-  // - const schema = { ... }
-  // - export default { ... }
-  const eqIdx = source.indexOf('=')
-  const exportDefaultIdx = source.indexOf('export default')
+  const equalsSignIndex = source.indexOf('=')
+  const exportDefaultKeywordIndex = source.indexOf('export default')
 
-  const startSearchFrom =
-    exportDefaultIdx >= 0 ? exportDefaultIdx : eqIdx >= 0 ? eqIdx : 0
+  const startSearchingFromIndex =
+    exportDefaultKeywordIndex >= 0
+      ? exportDefaultKeywordIndex
+      : equalsSignIndex >= 0
+        ? equalsSignIndex
+        : 0
 
-  const openIdx = source.indexOf('{', startSearchFrom)
-  if (openIdx < 0) return null
+  const openingBraceIndex = source.indexOf('{', startSearchingFromIndex)
+  if (openingBraceIndex < 0) return null
 
-  let i = openIdx
-  let depth = 0
+  let currentIndex = openingBraceIndex
+  let braceDepth = 0
   let inString: 'single' | 'double' | 'template' | null = null
-  let escape = false
+  let isEscaping = false
 
-  for (; i < source.length; i++) {
-    const ch = source[i]
+  for (; currentIndex < source.length; currentIndex++) {
+    const character = source[currentIndex]
 
-    if (escape) {
-      escape = false
+    if (isEscaping) {
+      isEscaping = false
       continue
     }
 
     if (inString) {
-      if (ch === '\\') {
-        escape = true
+      if (character === '\\') {
+        isEscaping = true
         continue
       }
-      if (inString === 'single' && ch === "'") inString = null
-      else if (inString === 'double' && ch === '"') inString = null
-      else if (inString === 'template' && ch === '`') inString = null
+      if (inString === 'single' && character === "'") inString = null
+      else if (inString === 'double' && character === '"') inString = null
+      else if (inString === 'template' && character === '`') inString = null
       continue
     }
 
-    if (ch === "'") {
+    if (character === "'") {
       inString = 'single'
       continue
     }
-    if (ch === '"') {
+    if (character === '"') {
       inString = 'double'
       continue
     }
-    if (ch === '`') {
+    if (character === '`') {
       inString = 'template'
       continue
     }
 
-    if (ch === '{') {
-      depth++
+    if (character === '{') {
+      braceDepth++
       continue
     }
-    if (ch === '}') {
-      depth--
-      if (depth === 0) {
-        return source.slice(openIdx, i + 1)
+    if (character === '}') {
+      braceDepth--
+      if (braceDepth === 0) {
+        return source.slice(openingBraceIndex, currentIndex + 1)
       }
     }
   }
@@ -88,45 +88,36 @@ function extractFirstObjectLiteral(source: string): string | null {
   return null
 }
 
-/**
- * Parses user-provided schema text into a `FormSchema`.
- *
- * Supported inputs:
- * - JSON string: `{ "type": "object", "properties": { ... } }`
- * - TS/JS module snippet containing an object literal assignment.
- *
- * Note: the TS/JS path uses `Function(...)` evaluation. Only use with trusted input.
- */
 export function parseFormSchemaInput(input: string): ParseResult {
-  const raw = input.trim()
-  if (!raw) throw new Error('Paste a JSON schema first')
+  const trimmedInputString = input.trim()
+  if (!trimmedInputString) throw new Error('Paste a JSON schema first')
 
   // 1) Try strict JSON first.
   try {
-    const parsed = JSON.parse(raw) as unknown
-    assertLooksLikeFormSchema(parsed)
-    return { schema: parsed, mode: 'json' }
+    const parsedValue = JSON.parse(trimmedInputString) as unknown
+    assertLooksLikeFormSchema(parsedValue)
+    return { schema: parsedValue, mode: 'json' }
   } catch {
     // Continue to object-literal parsing.
   }
 
   // 2) Attempt to extract `{ ... }` from TS/JS source and evaluate.
-  const objectLiteral = raw.startsWith('{')
-    ? raw
-    : extractFirstObjectLiteral(raw)
-  if (!objectLiteral) {
+  const objectLiteralSource = trimmedInputString.startsWith('{')
+    ? trimmedInputString
+    : extractFirstObjectLiteral(trimmedInputString)
+  if (!objectLiteralSource) {
     throw new Error(
       'Unable to find a schema object. Paste valid JSON, or a TS snippet that contains `= { ... }`.',
     )
   }
 
   // NOTE: This evaluates arbitrary JS. This is intentionally used only for local/dev tooling.
-  const evaluated = Function(
+  const evaluatedValue = Function(
     '"use strict";\n' +
       '// eslint-disable-next-line no-new-func\n' +
-      `return (${objectLiteral});`,
+      `return (${objectLiteralSource});`,
   )() as unknown
 
-  assertLooksLikeFormSchema(evaluated)
-  return { schema: evaluated, mode: 'object-literal' }
+  assertLooksLikeFormSchema(evaluatedValue)
+  return { schema: evaluatedValue, mode: 'object-literal' }
 }

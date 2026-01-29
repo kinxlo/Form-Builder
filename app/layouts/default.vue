@@ -8,7 +8,7 @@ import ThemeToggle from '~/components/ThemeToggle.vue'
       class="border-b bg-card/60 backdrop-blur supports-backdrop-filter:bg-card/40 sticky top-0 z-999"
     >
       <div
-        class="mx-auto flex max-w-4xl items-center justify-between gap-4 p-4 lg:p-6"
+        class="mx-auto flex max-w-7xl items-center justify-between gap-4 p-4 lg:p-6"
       >
         <section class="w-full">
           <span
@@ -89,9 +89,9 @@ import ThemeToggle from '~/components/ThemeToggle.vue'
           <div class="flex justify-between w-full items-center mt-4">
             <div>
               <h1 class="truncate text-sm lg:text-lg font-semibold">
-                Frontend Engineering Assessment
+                Dynamic Form Builder v1.0
               </h1>
-              <p class="text-xs lg:text-sm text-muted-foreground">Dynamic Form Builder</p>
+              <p class="text-xs lg:text-sm text-muted-foreground">Frontend Engineering Assessment</p>
             </div>
             <ThemeToggle />
           </div>
@@ -99,7 +99,7 @@ import ThemeToggle from '~/components/ThemeToggle.vue'
       </div>
     </header>
 
-    <main class="mx-auto w-full max-w-4xl p-4 lg:p-6">
+    <main class="mx-auto w-full max-w-7xl p-4 lg:p-6">
       <slot />
     </main>
   </section>

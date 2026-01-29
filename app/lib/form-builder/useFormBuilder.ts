@@ -7,6 +7,11 @@ import type {
 } from './types'
 import { normalizeValueForSubmit, validateField } from './validation'
 import { getDependentOptionsForField } from './dependent-options'
+import {
+  getConditionalRequiredFieldNames,
+  isFieldConditionallyRequired,
+  parseSchema,
+} from './schema'
 
 // Internal type for form values that handles string | File | null.
 export type InternalFormValues = Record<string, string | File | null>
@@ -28,6 +33,12 @@ export function useFormBuilder(params: {
   const lastSubmitted = ref<SubmitPayload | null>(null)
 
   const dependentOptionsMap = params.dependentOptionsMap ?? (() => ({}))
+
+  // Avoid `ReferenceError: File is not defined` in SSR/Node environments.
+  const FileCtor = (globalThis as unknown as { File?: typeof File }).File
+  function isFile(value: unknown): value is File {
+    return Boolean(FileCtor) && value instanceof (FileCtor as typeof File)
+  }
 
   function initializeForm() {
     const parsedFields = parseSchema(params.schema())
@@ -136,7 +147,7 @@ export function useFormBuilder(params: {
       // Build a JSON-safe payload for on-page display (Files become metadata)
       const payload: SubmitPayload = {}
       for (const [key, val] of Object.entries(normalized)) {
-        if (val instanceof File) {
+        if (isFile(val)) {
           payload[key] = { name: val.name, size: val.size, type: val.type }
         } else {
           payload[key] = val

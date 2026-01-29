@@ -11,10 +11,6 @@ const mode = ref<ThemeMode>('light')
 
 const isDark = computed(() => mode.value === 'dark')
 
-// Keep the toggle label in sync during the very first client render.
-// The inline head script (configured in nuxt.config.ts) sets the `html` class
-// before hydration, but this component's default state is `light` until
-// `onMounted` runs.
 if (import.meta.client) {
   const root = document.documentElement
   if (root.classList.contains('dark')) mode.value = 'dark'

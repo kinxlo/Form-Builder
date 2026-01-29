@@ -25,16 +25,16 @@ export default defineNuxtConfig({
         {
           // Unhead uses `innerHTML` for inline scripts in config.
           innerHTML: `(() => {
-  try {
-    var key = 'theme-mode';
-    var stored = localStorage.getItem(key);
-    var prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
-    var mode = (stored === 'light' || stored === 'dark') ? stored : (prefersDark ? 'dark' : 'light');
-    var root = document.documentElement;
-    root.classList.toggle('dark', mode === 'dark');
-    root.classList.toggle('light', mode === 'light');
-  } catch (e) {}
-})();`,
+            try {
+              var key = 'theme-mode';
+              var stored = localStorage.getItem(key);
+              var prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+              var mode = (stored === 'light' || stored === 'dark') ? stored : (prefersDark ? 'dark' : 'light');
+              var root = document.documentElement;
+              root.classList.toggle('dark', mode === 'dark');
+              root.classList.toggle('light', mode === 'light');
+            } catch (e) {}
+          })();`,
         },
       ],
     },

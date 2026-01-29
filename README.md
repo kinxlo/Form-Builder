@@ -7,38 +7,10 @@ Frontend Engineering Assessment: a dynamic form builder that accepts a JSON sche
 - Nuxt 4 + Vue 3
 - Tailwind CSS
 
-## Quick start
+## Docs
 
-Install dependencies:
-
-```bash
-pnpm install
-```
-
-Run the dev server:
-
-```bash
-pnpm dev
-```
-
-Open:
-
-- http://localhost:3000
-
-## Where the implementation lives
-
-- Reusable form builder UI:
-  - [`app/components/form-builder/FormBuilder.vue`](app/components/form-builder/FormBuilder.vue)
-  - [`app/components/form-builder/FormField.vue`](app/components/form-builder/FormField.vue)
-- Form-builder logic (composable + helpers):
-  - [`app/lib/form-builder/useFormBuilder.ts`](app/lib/form-builder/useFormBuilder.ts)
-  - [`app/lib/form-builder/validation.ts`](app/lib/form-builder/validation.ts)
-  - [`app/lib/form-builder/dependent-options.ts`](app/lib/form-builder/dependent-options.ts)
-  - [`app/lib/form-builder/schema.ts`](app/lib/form-builder/schema.ts)
-  - [`app/lib/form-builder/types.ts`](app/lib/form-builder/types.ts)
-- Schema parsing (legacy location, still source of truth): [`app/lib/schema-parser.ts`](app/lib/schema-parser.ts)
-- Example schema used on the demo page: [`app/lib/sample-schema.ts`](app/lib/sample-schema.ts)
-- Demo page (includes demo-only sections/grouping): [`app/pages/index.vue`](app/pages/index.vue)
+- Setup (install/run/tests/coverage): [`docs/setup.md`](docs/setup.md)
+- Workflow (implementation map + test criteria + trade-offs + supported schema features): [`docs/workflow.md`](docs/workflow.md)
 
 ## Supported schema features
 

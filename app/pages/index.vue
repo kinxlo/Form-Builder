@@ -83,13 +83,11 @@ const sections = [
 </script>
 
 <template>
-  <div>
-    <Card class="mb-6 shadow-none">
+  <section class="grid grid-cols-2 gap-4">
+    <Card class="mb-6 shadow-none h-fit sticky top-45">
       <CardHeader class="border-b">
         <CardTitle class="text-base">Schema input</CardTitle>
-        <CardDescription>
-          JSON schema parser
-        </CardDescription>
+        <CardDescription> JSON schema parser </CardDescription>
       </CardHeader>
 
       <CardContent class="space-y-4 pt-6">
@@ -121,29 +119,6 @@ const sections = [
         </p>
       </CardContent>
     </Card>
-
-    <!-- <div class="mb-4 rounded-lg border bg-muted/30 p-3 text-xs">
-      <p class="font-medium">SSR demo (server fetch + client hydration)</p>
-      <p v-if="schemaPending">
-        Loading schema from <code>/sample-schema.json</code>…
-      </p>
-      <p v-else-if="schemaError" class="text-destructive">
-        Failed to load schema.
-        <button class="underline" type="button" @click="refreshSchema()">
-          Retry
-        </button>
-      </p>
-      <p v-else>
-        Schema fetchedAt (SSR payload): <code>{{ fetchedAt }}</code>
-      </p>
-
-      <p class="mt-2 text-[11px] text-muted-foreground">
-        This is a plain request to a static file
-        (<code>/sample-schema.json</code>), but during SSR Nuxt executes it on
-        the server and hydrates the result on the client.
-      </p>
-    </div> -->
-
     <FormBuilder v-if="schema" :schema="schema" :sections="sections" />
-  </div>
+  </section>
 </template>

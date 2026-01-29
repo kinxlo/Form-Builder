@@ -11,7 +11,7 @@ import type {
 type UnknownFormValue = string | boolean | File | null | undefined
 
 // Avoid `ReferenceError: File is not defined` during SSR.
-const FileCtor = (globalThis as unknown as { File?: typeof File }).File
+const FileConstructor = (globalThis as unknown as { File?: typeof File }).File
 
 /**
  * Helper to check if data is an array of SelectOption
@@ -37,39 +37,48 @@ function isSourceData(data: unknown): data is SourceData {
  * Parse a JSON schema into form field configurations
  */
 export function parseSchema(schema: FormSchema): FormFieldConfig[] {
-  const fields: Array<{ idx: number; field: FormFieldConfig }> = []
+  const fieldsWithOriginalIndex: Array<{
+    originalIndex: number
+    fieldConfiguration: FormFieldConfig
+  }> = []
   const { properties, required = [] } = schema
 
   // Extract conditional requirements from if-then-else and allOf
   const conditionalRequirements = extractConditionalRequirements(schema)
 
-  let idx = 0
-  for (const [name, fieldSchema] of Object.entries(properties)) {
-    const config = parseFieldSchema(
-      name,
+  let originalFieldIndex = 0
+  for (const [fieldName, fieldSchema] of Object.entries(properties)) {
+    const fieldConfiguration = parseFieldSchema(
+      fieldName,
       fieldSchema,
-      required.includes(name),
+      required.includes(fieldName),
       conditionalRequirements,
     )
 
-    fields.push({ idx, field: config })
-    idx++
+    fieldsWithOriginalIndex.push({
+      originalIndex: originalFieldIndex,
+      fieldConfiguration,
+    })
+    originalFieldIndex++
   }
 
   // Sort by x-order (stable)
-  return fields
-    .sort((a, b) => {
-      const byOrder = a.field.order - b.field.order
-      if (byOrder !== 0) return byOrder
-      return a.idx - b.idx
+  return fieldsWithOriginalIndex
+    .sort((firstEntry, secondEntry) => {
+      const orderComparisonResult =
+        firstEntry.fieldConfiguration.order -
+        secondEntry.fieldConfiguration.order
+
+      if (orderComparisonResult !== 0) return orderComparisonResult
+      return firstEntry.originalIndex - secondEntry.originalIndex
     })
-    .map((x) => x.field)
+    .map((entry) => entry.fieldConfiguration)
 }
 
 function isFilled(value: UnknownFormValue): boolean {
   if (value === null || value === undefined) return false
   if (typeof value === 'string') return value.trim().length > 0
-  if (FileCtor && value instanceof (FileCtor as typeof File))
+  if (FileConstructor && value instanceof (FileConstructor as typeof File))
     return Boolean(value.name)
   // boolean true/false counts as filled
   return true
@@ -83,7 +92,9 @@ function matchesConstOrEnum(
     return String(value) === String(condition.const)
   }
   if (Array.isArray(condition.enum)) {
-    return condition.enum.some((v) => String(v) === String(value))
+    return condition.enum.some(
+      (enumValue) => String(enumValue) === String(value),
+    )
   }
   // If no explicit matcher, treat as pass-through
   return true
@@ -125,24 +136,37 @@ export function getConditionalRequiredFieldNames(
 ): Set<string> {
   const required = new Set<string>()
 
-  const evaluate = (conditional: ConditionalRequirement) => {
-    const outcome = evaluateIfCondition(conditional.if, formValues)
+  const evaluateConditionalRequirement = (
+    conditionalRequirement: ConditionalRequirement,
+  ) => {
+    const conditionalOutcome = evaluateIfCondition(
+      conditionalRequirement.if,
+      formValues,
+    )
 
     // Avoid applying `else.required` when the condition can't be evaluated yet.
-    if (outcome === 'unknown') return
+    if (conditionalOutcome === 'unknown') return
 
-    const target = outcome === 'match' ? conditional.then : conditional.else
-    for (const fieldName of target?.required ?? []) {
+    const targetBranchSchema =
+      conditionalOutcome === 'match'
+        ? conditionalRequirement.then
+        : conditionalRequirement.else
+
+    for (const fieldName of targetBranchSchema?.required ?? []) {
       required.add(fieldName)
     }
   }
 
   if (schema.if && (schema.then || schema.else)) {
-    evaluate({ if: schema.if, then: schema.then, else: schema.else })
+    evaluateConditionalRequirement({
+      if: schema.if,
+      then: schema.then,
+      else: schema.else,
+    })
   }
 
   for (const conditional of schema.allOf ?? []) {
-    if (conditional.if) evaluate(conditional)
+    if (conditional.if) evaluateConditionalRequirement(conditional)
   }
 
   return required
@@ -158,8 +182,8 @@ function extractConditionalRequirements(
 
   // Handle top-level if-then-else
   if (schema.if && schema.then) {
-    const conditionField = Object.keys(schema.if.properties)[0] as string
-    requirements.set(conditionField, {
+    const conditionFieldName = Object.keys(schema.if.properties)[0] as string
+    requirements.set(conditionFieldName, {
       if: schema.if,
       then: schema.then,
       else: schema.else,
@@ -168,12 +192,12 @@ function extractConditionalRequirements(
 
   // Handle allOf conditionals
   if (schema.allOf) {
-    for (const conditional of schema.allOf) {
-      if (conditional.if?.properties) {
-        const conditionField = Object.keys(
-          conditional.if.properties,
+    for (const conditionalRequirement of schema.allOf) {
+      if (conditionalRequirement.if?.properties) {
+        const conditionFieldName = Object.keys(
+          conditionalRequirement.if.properties,
         )[0] as string
-        requirements.set(conditionField, conditional)
+        requirements.set(conditionFieldName, conditionalRequirement)
       }
     }
   }
@@ -190,15 +214,17 @@ function parseFieldSchema(
   isRequired: boolean,
   conditionalRequirements: Map<string, ConditionalRequirement>,
 ): FormFieldConfig {
-  const source = schema['x-source']
-  const inputType = source?.type || inferInputType(schema)
+  const sourceConfiguration = schema['x-source']
+  const inputType = sourceConfiguration?.type || inferInputType(schema)
 
-  const orderRaw = (schema as unknown as { 'x-order'?: unknown })['x-order']
+  const orderValueRaw = (schema as unknown as { 'x-order'?: unknown })[
+    'x-order'
+  ]
   const order =
-    typeof orderRaw === 'number'
-      ? orderRaw
-      : Number.isFinite(Number(orderRaw))
-        ? Number(orderRaw)
+    typeof orderValueRaw === 'number'
+      ? orderValueRaw
+      : Number.isFinite(Number(orderValueRaw))
+        ? Number(orderValueRaw)
         : 999
 
   // Parse options for dropdown/select fields
@@ -206,14 +232,14 @@ function parseFieldSchema(
   let dependsOn: string | undefined
   let dependentOptions: Record<string, SelectOption[]> | undefined
 
-  if (inputType === 'array' && source?.data) {
-    const data = source.data
+  if (inputType === 'array' && sourceConfiguration?.data) {
+    const data = sourceConfiguration.data
 
     // Case 1: data is directly an array of options
     if (isSelectOptionArray(data)) {
-      options = data.map((opt) => ({
-        label: opt.label,
-        value: String(opt.value),
+      options = data.map((option) => ({
+        label: option.label,
+        value: String(option.value),
       }))
     }
     // Case 2: data is an object with options or dependsOn
@@ -229,11 +255,13 @@ function parseFieldSchema(
           !Array.isArray(data.options)
         ) {
           dependentOptions = {}
-          for (const [key, opts] of Object.entries(data.options)) {
-            if (Array.isArray(opts)) {
-              dependentOptions[key] = opts.map((opt) => ({
-                label: opt.label,
-                value: String(opt.value),
+          for (const [optionKey, optionsForKey] of Object.entries(
+            data.options,
+          )) {
+            if (Array.isArray(optionsForKey)) {
+              dependentOptions[optionKey] = optionsForKey.map((option) => ({
+                label: option.label,
+                value: String(option.value),
               }))
             }
           }
@@ -241,9 +269,9 @@ function parseFieldSchema(
       }
       // Check for regular options array
       else if (data.options && Array.isArray(data.options)) {
-        options = data.options.map((opt) => ({
-          label: opt.label,
-          value: String(opt.value),
+        options = data.options.map((option) => ({
+          label: option.label,
+          value: String(option.value),
         }))
       }
     }
@@ -260,8 +288,8 @@ function parseFieldSchema(
   }
 
   // Add source-specific validation
-  if (source?.data && isSourceData(source.data)) {
-    const sourceData = source.data
+  if (sourceConfiguration?.data && isSourceData(sourceConfiguration.data)) {
+    const sourceData = sourceConfiguration.data
     if (sourceData.minAge) {
       validation.minAge = sourceData.minAge
     }
@@ -340,7 +368,9 @@ export function isFieldConditionallyRequired(
     case 'eq':
       if (Array.isArray(requiredValue)) {
         return requiredValue.some(
-          (v) => v === currentValue || String(v) === String(currentValue),
+          (candidateValue) =>
+            candidateValue === currentValue ||
+            String(candidateValue) === String(currentValue),
         )
       }
       return (
@@ -351,7 +381,9 @@ export function isFieldConditionallyRequired(
     case 'neq':
       if (Array.isArray(requiredValue)) {
         return !requiredValue.some(
-          (v) => v === currentValue || String(v) === String(currentValue),
+          (candidateValue) =>
+            candidateValue === currentValue ||
+            String(candidateValue) === String(currentValue),
         )
       }
       return (
@@ -362,7 +394,9 @@ export function isFieldConditionallyRequired(
     case 'in':
       if (Array.isArray(requiredValue)) {
         return requiredValue.some(
-          (v) => v === currentValue || String(v) === String(currentValue),
+          (candidateValue) =>
+            candidateValue === currentValue ||
+            String(candidateValue) === String(currentValue),
         )
       }
       return currentValue === requiredValue
@@ -370,7 +404,9 @@ export function isFieldConditionallyRequired(
     case 'nin':
       if (Array.isArray(requiredValue)) {
         return !requiredValue.some(
-          (v) => v === currentValue || String(v) === String(currentValue),
+          (candidateValue) =>
+            candidateValue === currentValue ||
+            String(candidateValue) === String(currentValue),
         )
       }
       return currentValue !== requiredValue
@@ -379,7 +415,9 @@ export function isFieldConditionallyRequired(
       // Default to equality check
       if (Array.isArray(requiredValue)) {
         return requiredValue.some(
-          (v) => v === currentValue || String(v) === String(currentValue),
+          (candidateValue) =>
+            candidateValue === currentValue ||
+            String(candidateValue) === String(currentValue),
         )
       }
       return (

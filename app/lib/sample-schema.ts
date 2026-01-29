@@ -1,14 +1,5 @@
 import type { FormSchema, SelectOption } from './types/form-schema'
 
-/**
- * Vehicle Registration Form Schema
- * This schema demonstrates all form builder features including:
- * - Multiple input types (text, tel, number, date, file, array)
- * - Conditional requirements (x-required_if and if-then-else)
- * - Dependent dropdowns (vehicle model depends on make)
- * - Pattern validation
- * - Custom error messages
- */
 export const sampleSchema: FormSchema = {
   if: {
     required: ['purchase_type'],
