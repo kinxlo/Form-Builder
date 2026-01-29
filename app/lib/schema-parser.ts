@@ -10,6 +10,9 @@ import type {
 
 type UnknownFormValue = string | boolean | File | null | undefined
 
+// Avoid `ReferenceError: File is not defined` during SSR.
+const FileCtor = (globalThis as unknown as { File?: typeof File }).File
+
 /**
  * Helper to check if data is an array of SelectOption
  */
@@ -34,12 +37,13 @@ function isSourceData(data: unknown): data is SourceData {
  * Parse a JSON schema into form field configurations
  */
 export function parseSchema(schema: FormSchema): FormFieldConfig[] {
-  const fields: FormFieldConfig[] = []
+  const fields: Array<{ idx: number; field: FormFieldConfig }> = []
   const { properties, required = [] } = schema
 
   // Extract conditional requirements from if-then-else and allOf
   const conditionalRequirements = extractConditionalRequirements(schema)
 
+  let idx = 0
   for (const [name, fieldSchema] of Object.entries(properties)) {
     const config = parseFieldSchema(
       name,
@@ -47,17 +51,26 @@ export function parseSchema(schema: FormSchema): FormFieldConfig[] {
       required.includes(name),
       conditionalRequirements,
     )
-    fields.push(config)
+
+    fields.push({ idx, field: config })
+    idx++
   }
 
-  // Sort by x-order
-  return fields.sort((a, b) => a.order - b.order)
+  // Sort by x-order (stable)
+  return fields
+    .sort((a, b) => {
+      const byOrder = a.field.order - b.field.order
+      if (byOrder !== 0) return byOrder
+      return a.idx - b.idx
+    })
+    .map((x) => x.field)
 }
 
 function isFilled(value: UnknownFormValue): boolean {
   if (value === null || value === undefined) return false
   if (typeof value === 'string') return value.trim().length > 0
-  if (value instanceof File) return Boolean(value.name)
+  if (FileCtor && value instanceof (FileCtor as typeof File))
+    return Boolean(value.name)
   // boolean true/false counts as filled
   return true
 }
@@ -180,6 +193,14 @@ function parseFieldSchema(
   const source = schema['x-source']
   const inputType = source?.type || inferInputType(schema)
 
+  const orderRaw = (schema as unknown as { 'x-order'?: unknown })['x-order']
+  const order =
+    typeof orderRaw === 'number'
+      ? orderRaw
+      : Number.isFinite(Number(orderRaw))
+        ? Number(orderRaw)
+        : 999
+
   // Parse options for dropdown/select fields
   let options: SelectOption[] | undefined
   let dependsOn: string | undefined
@@ -259,7 +280,7 @@ function parseFieldSchema(
     name,
     label: schema['x-label'] || formatLabel(name),
     placeholder: schema['x-description'],
-    order: schema['x-order'] ?? 999,
+    order,
     inputType,
     isRequired,
     conditionalRequired,

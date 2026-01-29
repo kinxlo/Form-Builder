@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
-import { CalendarIcon, Upload, X } from 'lucide-vue-next'
+import { CalendarIcon, ChevronDown, Upload, X } from 'lucide-vue-next'
 import { format, subYears } from 'date-fns'
 import { cn } from '../../lib/utils'
 import type { FormFieldConfig, SelectOption } from '~/lib/types/form-schema'
@@ -89,7 +89,7 @@ function handleSelectChange(value: string) {
       :for="name"
       :class="
         cn(
-          'text-sm font-medium leading-none text-foreground peer-disabled:cursor-not-allowed peer-disabled:opacity-70',
+          'text-sm font-bold leading-none text-slate-900 dark:text-slate-100 peer-disabled:cursor-not-allowed peer-disabled:opacity-70',
         )
       "
     >
@@ -119,7 +119,7 @@ function handleSelectChange(value: string) {
       :aria-describedby="error ? `${name}-error` : undefined"
       :class="
         cn(
-          'mt-2 flex h-11 w-full rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm',
+          'mt-2 flex h-12 w-full rounded-md border border-input bg-background px-3 py-2 text-base text-slate-900 dark:text-slate-100 ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-slate-400 dark:placeholder:text-slate-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm',
           error && 'border-destructive',
         )
       "
@@ -133,8 +133,10 @@ function handleSelectChange(value: string) {
         @click="dateOpen = !dateOpen"
         :class="
           cn(
-            'mt-2 flex h-11 w-full items-center justify-start rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm',
-            !modelValue && 'text-muted-foreground',
+            'mt-2 flex h-12 w-full items-center justify-start rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm',
+            modelValue
+              ? 'text-slate-900 dark:text-slate-100'
+              : 'text-slate-500 dark:text-slate-400',
             error && 'border-destructive',
           )
         "
@@ -160,7 +162,7 @@ function handleSelectChange(value: string) {
             (e) =>
               handleDateSelect(new Date((e.target as HTMLInputElement).value))
           "
-          class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2"
+          class="flex h-12 w-full rounded-md border border-input bg-background px-3 py-2"
         />
       </div>
     </div>
@@ -229,7 +231,7 @@ function handleSelectChange(value: string) {
           :id="name"
           type="button"
           disabled
-          class="flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm"
+          class="flex h-12 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm"
         >
           <span class="text-muted-foreground"
             >Select parent field first...</span
@@ -237,31 +239,41 @@ function handleSelectChange(value: string) {
         </button>
       </template>
       <template v-else>
-        <select
-          :id="name"
-          :value="(modelValue as string) || ''"
-          @change="
-            (e) => handleSelectChange((e.target as HTMLSelectElement).value)
-          "
-          :class="
-            cn(
-              'mt-2 flex h-11 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm',
-              error && 'border-destructive',
-            )
-          "
-          :aria-invalid="!!error"
-        >
-          <option value="" disabled>
-            {{ placeholder || 'Select an option...' }}
-          </option>
-          <option
-            v-for="option in dependsOn ? dependentOptions : options"
-            :key="String(option.value)"
-            :value="String(option.value)"
+        <div class="relative mt-2">
+          <select
+            :id="name"
+            :value="(modelValue as string) || ''"
+            @change="
+              (e) => handleSelectChange((e.target as HTMLSelectElement).value)
+            "
+            :class="
+              cn(
+                'flex h-12 w-full appearance-none rounded-md border border-input bg-background px-3 py-2 pr-10 text-base ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm',
+                modelValue
+                  ? 'text-slate-900 dark:text-slate-100'
+                  : 'text-slate-500 dark:text-slate-400',
+                error && 'border-destructive',
+              )
+            "
+            :aria-invalid="!!error"
           >
-            {{ option.label }}
-          </option>
-        </select>
+            <option value="" disabled>
+              {{ placeholder || 'Select an option...' }}
+            </option>
+            <option
+              v-for="option in dependsOn ? dependentOptions : options"
+              :key="String(option.value)"
+              :value="String(option.value)"
+            >
+              {{ option.label }}
+            </option>
+          </select>
+
+          <!-- Custom chevron for consistent padding/alignment across browsers -->
+          <ChevronDown
+            class="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500 dark:text-slate-400"
+          />
+        </div>
       </template>
     </div>
 
@@ -277,7 +289,7 @@ function handleSelectChange(value: string) {
       :aria-invalid="!!error"
       :class="
         cn(
-          'flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm',
+          'flex h-12 w-full rounded-md border border-input bg-background px-3 py-2 text-base text-slate-900 dark:text-slate-100 ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-slate-400 dark:placeholder:text-slate-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm',
           error && 'border-destructive',
         )
       "

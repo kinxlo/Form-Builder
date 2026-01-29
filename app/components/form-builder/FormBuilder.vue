@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, watch, onMounted } from 'vue'
+import { ref, watch } from 'vue'
 import { Loader2 } from 'lucide-vue-next'
 import FormField from './FormField.vue'
 import type {
@@ -42,17 +42,13 @@ const isSubmitting = ref(false)
 const submitSuccess = ref(false)
 const lastSubmitted = ref<SubmitPayload | null>(null)
 
-// Parse schema on mount or when schema changes
-onMounted(() => {
-  initializeForm()
-})
-
 watch(
   () => props.schema,
   () => {
     initializeForm()
   },
-  { deep: true },
+  // Run during setup (including SSR) to avoid initial empty render -> layout shift.
+  { deep: true, immediate: true },
 )
 
 function initializeForm() {
@@ -125,7 +121,7 @@ function isRequiredForField(field: FormFieldConfig): boolean {
 function fieldClasses(hasError: boolean) {
   return hasError
     ? 'rounded-lg border border-destructive/50 bg-destructive/5 p-4'
-    : 'rounded-lg border border-border/60 bg-card p-4'
+    : ''
 }
 
 // Validate a single field
@@ -345,26 +341,14 @@ function shouldShowField(_field: FormFieldConfig): boolean {
 </script>
 
 <template>
-  <div class="rounded-lg border bg-card text-card-foreground shadow-sm">
-    <div class="flex flex-col space-y-1.5 p-6">
-      <h3
-        v-if="schema.title"
-        class="text-2xl font-semibold leading-none tracking-tight"
-      >
-        {{ schema.title }}
-      </h3>
-      <p v-if="schema.description" class="text-sm text-muted-foreground">
-        {{ schema.description }}
-      </p>
-    </div>
-    <div class="p-6 pt-0">
+  <div class="rounded-lg border bg-card text-card-foreground shadow">
+    <div class="p-6">
       <form @submit.prevent="handleSubmit" novalidate>
-        <div class="grid gap-4 md:grid-cols-2">
+        <div class="flex flex-col gap-4">
           <template v-for="field in fields" :key="field.name">
             <div
               v-if="shouldShowField(field)"
               :class="fieldClasses(!!errors[field.name])"
-              class="md:col-span-1"
             >
               <FormField
                 :config="field"
@@ -383,16 +367,13 @@ function shouldShowField(_field: FormFieldConfig): boolean {
             </div>
           </template>
 
-          <p
-            v-if="errors._form"
-            class="md:col-span-2 text-sm text-destructive text-center"
-          >
+          <p v-if="errors._form" class="text-sm text-destructive text-center">
             {{ errors._form }}
           </p>
 
           <div
             v-if="submitSuccess"
-            class="md:col-span-2 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-4"
+            class="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-4"
           >
             <p class="text-sm text-green-700 dark:text-green-300 text-center">
               Form submitted successfully! Check the console for the submitted
@@ -400,10 +381,7 @@ function shouldShowField(_field: FormFieldConfig): boolean {
             </p>
           </div>
 
-          <div
-            v-if="lastSubmitted"
-            class="md:col-span-2 rounded-lg border bg-muted/30 p-4"
-          >
+          <div v-if="lastSubmitted" class="rounded-lg border bg-muted/30 p-4">
             <p class="text-sm font-medium mb-2">Submitted data</p>
             <pre class="text-xs overflow-auto whitespace-pre-wrap">{{
               JSON.stringify(lastSubmitted, null, 2)
@@ -412,7 +390,7 @@ function shouldShowField(_field: FormFieldConfig): boolean {
 
           <button
             type="submit"
-            class="md:col-span-2 inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 bg-primary text-primary-foreground hover:bg-primary/90 h-11 px-4 py-2 w-full"
+            class="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 bg-primary text-primary-foreground hover:bg-primary/90 h-11 px-4 py-2 w-full"
             :disabled="isSubmitting"
           >
             <Loader2 v-if="isSubmitting" class="mr-2 h-4 w-4 animate-spin" />
