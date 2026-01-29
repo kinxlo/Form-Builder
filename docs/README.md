@@ -1,8 +1,8 @@
 # Docs
 
-- Setup: [`docs/setup.md`](docs/setup.md)
-- Tests: [`docs/tests.md`](docs/tests.md)
-- Workflow: [`docs/workflow.md`](docs/workflow.md)
+- Setup: [`setup.md`](setup.md)
+- Tests: [`tests.md`](tests.md)
+- Workflow: [`workflow.md`](workflow.md)
 
 ## Approach and Trade off (Dynamic and static forms)
 
