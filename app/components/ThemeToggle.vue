@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import { Moon, Sun } from 'lucide-vue-next'
+import { Button } from './ui/button'
 
 type ThemeMode = 'light' | 'dark'
 
@@ -9,6 +10,16 @@ const STORAGE_KEY = 'theme-mode'
 const mode = ref<ThemeMode>('light')
 
 const isDark = computed(() => mode.value === 'dark')
+
+// Keep the toggle label in sync during the very first client render.
+// The inline head script (configured in nuxt.config.ts) sets the `html` class
+// before hydration, but this component's default state is `light` until
+// `onMounted` runs.
+if (import.meta.client) {
+  const root = document.documentElement
+  if (root.classList.contains('dark')) mode.value = 'dark'
+  else if (root.classList.contains('light')) mode.value = 'light'
+}
 
 function applyMode(next: ThemeMode) {
   mode.value = next
@@ -50,14 +61,15 @@ onMounted(() => {
 </script>
 
 <template>
-  <button
+  <Button
+    class="shadow-none"
     type="button"
-    class="inline-flex items-center gap-2 rounded-md border border-input bg-background px-3 py-2 text-sm shadow-xs transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+    variant="outline"
     @click="toggle"
     :aria-label="isDark ? 'Switch to light mode' : 'Switch to dark mode'"
   >
     <Moon v-if="isDark" class="h-4 w-4" />
     <Sun v-else class="h-4 w-4" />
     <span class="hidden sm:inline">{{ isDark ? 'Dark' : 'Light' }}</span>
-  </button>
+  </Button>
 </template>

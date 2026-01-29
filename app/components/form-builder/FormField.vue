@@ -1,9 +1,23 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
-import { CalendarIcon, ChevronDown, Upload, X } from 'lucide-vue-next'
+import { CalendarIcon, Upload, X } from 'lucide-vue-next'
+import { parseDate, type DateValue } from '@internationalized/date'
 import { format, subYears } from 'date-fns'
-import { cn } from '../../lib/utils'
-import type { FormFieldConfig, SelectOption } from '~/lib/types/form-schema'
+import { cn } from '~/lib/utils'
+import type { FormFieldConfig, SelectOption } from '~/lib/form-builder/types'
+import { Button } from '../ui/button'
+import { Input } from '../ui/input'
+import { Label } from '../ui/label'
+import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover'
+import { Calendar } from '../ui/calendar'
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '../ui/select'
 
 interface Props {
   config: FormFieldConfig
@@ -40,22 +54,68 @@ const dateOpen = ref(false)
 // For file input
 const fileInputRef = ref<HTMLInputElement | null>(null)
 
-// Computed selected date for date picker
-const selectedDate = computed(() => {
-  if (props.modelValue && typeof props.modelValue === 'string') {
-    return new Date(props.modelValue)
+const stringValue = computed(() =>
+  typeof props.modelValue === 'string' ? props.modelValue : '',
+)
+
+// DateValue for Calendar (reka-ui)
+const selectedDateValue = computed<DateValue | undefined>(() => {
+  if (!stringValue.value) return undefined
+  try {
+    return parseDate(stringValue.value)
+  } catch {
+    return undefined
   }
-  return undefined
 })
 
 // Calculate max date based on minAge for date picker
-const maxDate = computed(() => {
-  return validation.minAge ? subYears(new Date(), validation.minAge) : undefined
+const maxDateValue = computed<DateValue | undefined>(() => {
+  if (!validation.minAge) return undefined
+  const maxDate = subYears(new Date(), validation.minAge)
+  return parseDate(format(maxDate, 'yyyy-MM-dd'))
 })
 
-function handleInput(event: Event) {
-  const target = event.target as HTMLInputElement
-  emit('update:modelValue', target.value)
+// If the schema doesn't provide a minimum date, keep it permissive but valid.
+// This prevents some calendar implementations from treating all dates as unavailable.
+const minDateValue = computed<DateValue>(() => {
+  // ~120 years ago as a reasonable default
+  const minDate = subYears(new Date(), 120)
+  return parseDate(format(minDate, 'yyyy-MM-dd'))
+})
+
+const minDateString = computed(() => minDateValue.value.toString())
+const maxDateString = computed(() => maxDateValue.value?.toString())
+
+// Use a v-model adapter so the calendar selection reliably updates.
+function commitDate(value: DateValue | undefined, opts?: { close?: boolean }) {
+  if (!value) return
+  emit('update:modelValue', value.toString())
+  if (opts?.close) dateOpen.value = false
+}
+
+const dateModel = computed<DateValue | undefined>({
+  get: () => selectedDateValue.value,
+  // Calendar selection should close the popover.
+  set: (value) => commitDate(value, { close: true }),
+})
+
+function handleDateInputChange(value: string | number) {
+  const raw = String(value)
+  if (!raw) {
+    emit('update:modelValue', null)
+    return
+  }
+
+  // While typing/selecting in the native <input type="date">, do NOT close the popover.
+  try {
+    commitDate(parseDate(raw), { close: false })
+  } catch {
+    // ignore invalid / partial input
+  }
+}
+
+function handleTextValueChange(value: string | number) {
+  emit('update:modelValue', String(value))
 }
 
 function handleFileChange(event: Event) {
@@ -71,21 +131,23 @@ function handleRemoveFile() {
   }
 }
 
-function handleDateSelect(date: Date | undefined) {
-  if (date) {
-    emit('update:modelValue', format(date, 'yyyy-MM-dd'))
-    dateOpen.value = false
-  }
+function handleDateSelect(value: DateValue | undefined) {
+  // Used by non-v-model code paths (kept for readability).
+  commitDate(value, { close: true })
 }
 
-function handleSelectChange(value: string) {
-  emit('update:modelValue', value)
+function handleSelectChange(value: unknown) {
+  if (value === null || value === undefined) {
+    emit('update:modelValue', null)
+    return
+  }
+  emit('update:modelValue', String(value))
 }
 </script>
 
 <template>
   <div class="space-y-2">
-    <label
+    <Label
       :for="name"
       :class="
         cn(
@@ -102,10 +164,10 @@ function handleSelectChange(value: string) {
           >*</span
         >
       </span>
-    </label>
+    </Label>
 
     <!-- Text, Tel, Number inputs -->
-    <input
+    <Input
       v-if="
         inputType === 'text' || inputType === 'tel' || inputType === 'number'
       "
@@ -113,13 +175,13 @@ function handleSelectChange(value: string) {
       :name="name"
       :type="inputType"
       :placeholder="placeholder"
-      :value="(modelValue as string) || ''"
-      @input="handleInput"
+      :model-value="stringValue"
+      @update:model-value="handleTextValueChange"
       :aria-invalid="!!error"
       :aria-describedby="error ? `${name}-error` : undefined"
       :class="
         cn(
-          'mt-2 flex h-12 w-full rounded-md border border-input bg-background px-3 py-2 text-base text-slate-900 dark:text-slate-100 ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-slate-400 dark:placeholder:text-slate-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm',
+          'mt-2 h-12 text-base px-3 py-2 shadow-none',
           error && 'border-destructive',
         )
       "
@@ -127,44 +189,58 @@ function handleSelectChange(value: string) {
 
     <!-- Date Picker -->
     <div v-else-if="inputType === 'date'" class="relative">
-      <button
-        :id="name"
-        type="button"
-        @click="dateOpen = !dateOpen"
-        :class="
-          cn(
-            'mt-2 flex h-12 w-full items-center justify-start rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm',
-            modelValue
-              ? 'text-slate-900 dark:text-slate-100'
-              : 'text-slate-500 dark:text-slate-400',
-            error && 'border-destructive',
-          )
-        "
-        :aria-invalid="!!error"
-      >
-        <CalendarIcon class="mr-2 h-4 w-4" />
-        <span v-if="modelValue">{{
-          format(new Date(modelValue as string), 'PPP')
-        }}</span>
-        <span v-else>{{ placeholder || 'Pick a date' }}</span>
-      </button>
+      <Popover v-model:open="dateOpen">
+        <PopoverTrigger as-child>
+          <Button
+            :id="name"
+            type="button"
+            variant="outline"
+            :class="
+              cn(
+                'mt-2 h-12 w-full justify-start px-3 text-base font-normal shadow-none',
+                !stringValue && 'text-slate-500 dark:text-slate-400',
+                error && 'border-destructive',
+              )
+            "
+            :aria-invalid="!!error"
+          >
+            <CalendarIcon class="mr-2 h-4 w-4" />
+            <span v-if="stringValue">{{
+              format(new Date(stringValue), 'PPP')
+            }}</span>
+            <span v-else>{{ placeholder || 'Pick a date' }}</span>
+          </Button>
+        </PopoverTrigger>
 
-      <!-- Simple date picker popover -->
-      <div
-        v-if="dateOpen"
-        class="absolute z-50 mt-1 rounded-md border bg-popover p-4 text-popover-foreground shadow-md"
-      >
-        <input
-          type="date"
-          :value="(modelValue as string) || ''"
-          :max="maxDate ? format(maxDate, 'yyyy-MM-dd') : undefined"
-          @change="
-            (e) =>
-              handleDateSelect(new Date((e.target as HTMLInputElement).value))
-          "
-          class="flex h-12 w-full rounded-md border border-input bg-background px-3 py-2"
-        />
-      </div>
+        <PopoverContent class="w-auto p-0" align="start">
+          <div class="border-b bg-muted/20 p-3">
+            <div class="grid gap-2">
+              <Input
+                :id="`${name}-date-input`"
+                type="date"
+                :model-value="stringValue"
+                @update:model-value="handleDateInputChange"
+                @keydown.enter="dateOpen = false"
+                :min="minDateString"
+                :max="maxDateString"
+                class="h-10"
+              />
+              <p class="text-[11px] text-muted-foreground">
+                Range:
+                <code>{{ minDateString }}</code>
+                <span v-if="maxDateString">
+                  → <code>{{ maxDateString }}</code></span
+                >
+              </p>
+            </div>
+          </div>
+          <Calendar
+            v-model="dateModel as any"
+            :min-value="minDateValue as any"
+            :max-value="maxDateValue as any"
+          />
+        </PopoverContent>
+      </Popover>
     </div>
 
     <!-- File Upload -->
@@ -173,7 +249,7 @@ function handleSelectChange(value: string) {
         :class="
           cn(
             'border border-dashed rounded-lg p-6 text-center transition-colors',
-            'hover:border-primary/50 hover:bg-muted/50',
+            'hover:border-primary/50 hover:bg-primary/5',
             error && 'border-destructive',
             modelValue && 'border-primary bg-primary/5',
           )
@@ -187,21 +263,23 @@ function handleSelectChange(value: string) {
               ({{ (fileValue.size / 1024).toFixed(1) }} KB)
             </span>
           </div>
-          <button
+          <Button
             type="button"
-            class="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 hover:bg-accent hover:text-accent-foreground h-8 w-8 shrink-0"
+            variant="ghost"
+            size="icon-sm"
+            class="shrink-0"
             @click="handleRemoveFile"
           >
             <X class="h-4 w-4" />
             <span class="sr-only">Remove file</span>
-          </button>
+          </Button>
         </div>
         <label
           v-else
           :for="name"
           class="cursor-pointer flex flex-col items-center gap-2"
         >
-          <Upload class="h-8 w-8 text-muted-foreground" />
+          <Upload class="h-8 w-8 text-primary" />
           <span class="text-sm text-muted-foreground">
             {{ placeholder || 'Click to upload or drag and drop' }}
           </span>
@@ -227,72 +305,57 @@ function handleSelectChange(value: string) {
       <template
         v-if="dependsOn && (!dependentOptions || dependentOptions.length === 0)"
       >
-        <button
+        <Button
           :id="name"
           type="button"
           disabled
-          class="flex h-12 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm"
+          variant="outline"
+          class="mt-2 h-12 w-full justify-between text-base"
         >
           <span class="text-muted-foreground"
             >Select parent field first...</span
           >
-        </button>
+        </Button>
       </template>
       <template v-else>
-        <div class="relative mt-2">
-          <select
-            :id="name"
-            :value="(modelValue as string) || ''"
-            @change="
-              (e) => handleSelectChange((e.target as HTMLSelectElement).value)
-            "
-            :class="
-              cn(
-                'flex h-12 w-full appearance-none rounded-md border border-input bg-background px-3 py-2 pr-10 text-base ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm',
-                modelValue
-                  ? 'text-slate-900 dark:text-slate-100'
-                  : 'text-slate-500 dark:text-slate-400',
-                error && 'border-destructive',
-              )
-            "
+        <Select
+          :model-value="stringValue || ''"
+          @update:model-value="handleSelectChange"
+        >
+          <SelectTrigger
+            class="mt-2 h-12! w-full shadow-none"
+            :class="cn(error && 'border-destructive')"
             :aria-invalid="!!error"
           >
-            <option value="" disabled>
-              {{ placeholder || 'Select an option...' }}
-            </option>
-            <option
-              v-for="option in dependsOn ? dependentOptions : options"
-              :key="String(option.value)"
-              :value="String(option.value)"
-            >
-              {{ option.label }}
-            </option>
-          </select>
-
-          <!-- Custom chevron for consistent padding/alignment across browsers -->
-          <ChevronDown
-            class="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500 dark:text-slate-400"
-          />
-        </div>
+            <SelectValue :placeholder="placeholder || 'Select an option...'" />
+          </SelectTrigger>
+          <SelectContent class="shadow-none">
+            <SelectGroup>
+              <SelectItem
+                v-for="option in dependsOn ? dependentOptions : options"
+                :key="String(option.value)"
+                :value="String(option.value)"
+                class="hover:bg-primary/40! hover:text-white!"
+              >
+                {{ option.label }}
+              </SelectItem>
+            </SelectGroup>
+          </SelectContent>
+        </Select>
       </template>
     </div>
 
     <!-- Default fallback -->
-    <input
+    <Input
       v-else
       :id="name"
       :name="name"
       type="text"
       :placeholder="placeholder"
-      :value="(modelValue as string) || ''"
-      @input="handleInput"
+      :model-value="stringValue"
+      @update:model-value="handleTextValueChange"
       :aria-invalid="!!error"
-      :class="
-        cn(
-          'flex h-12 w-full rounded-md border border-input bg-background px-3 py-2 text-base text-slate-900 dark:text-slate-100 ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-slate-400 dark:placeholder:text-slate-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm',
-          error && 'border-destructive',
-        )
-      "
+      :class="cn('h-12 text-base px-3 py-2', error && 'border-destructive')"
     />
 
     <p v-if="error" :id="`${name}-error`" class="text-sm text-destructive">

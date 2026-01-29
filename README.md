@@ -27,11 +27,18 @@ Open:
 
 ## Where the implementation lives
 
-- Reusable form builder: [`app/components/form-builder/FormBuilder.vue`](app/components/form-builder/FormBuilder.vue)
-- Field renderer: [`app/components/form-builder/FormField.vue`](app/components/form-builder/FormField.vue)
-- Schema parsing + conditional logic helpers: [`app/lib/schema-parser.ts`](app/lib/schema-parser.ts)
+- Reusable form builder UI:
+  - [`app/components/form-builder/FormBuilder.vue`](app/components/form-builder/FormBuilder.vue)
+  - [`app/components/form-builder/FormField.vue`](app/components/form-builder/FormField.vue)
+- Form-builder logic (composable + helpers):
+  - [`app/lib/form-builder/useFormBuilder.ts`](app/lib/form-builder/useFormBuilder.ts)
+  - [`app/lib/form-builder/validation.ts`](app/lib/form-builder/validation.ts)
+  - [`app/lib/form-builder/dependent-options.ts`](app/lib/form-builder/dependent-options.ts)
+  - [`app/lib/form-builder/schema.ts`](app/lib/form-builder/schema.ts)
+  - [`app/lib/form-builder/types.ts`](app/lib/form-builder/types.ts)
+- Schema parsing (legacy location, still source of truth): [`app/lib/schema-parser.ts`](app/lib/schema-parser.ts)
 - Example schema used on the demo page: [`app/lib/sample-schema.ts`](app/lib/sample-schema.ts)
-- Demo page: [`app/pages/index.vue`](app/pages/index.vue)
+- Demo page (includes demo-only sections/grouping): [`app/pages/index.vue`](app/pages/index.vue)
 
 ## Supported schema features
 
