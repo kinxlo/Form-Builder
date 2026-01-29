@@ -2,15 +2,16 @@ import type { FormFieldConfig } from './types'
 
 type UnknownFormValue = string | boolean | File | null | undefined
 
-// Avoid `ReferenceError: File is not defined` during SSR.
-const FileCtor = (globalThis as unknown as { File?: typeof File }).File
-
 function isFile(value: unknown): value is File {
+  // Avoid `ReferenceError: File is not defined` during SSR.
+  // NOTE: resolve from globalThis at call-time so Node/Vitest stubs can work.
+  const FileCtor = (globalThis as unknown as { File?: typeof File }).File
   return Boolean(FileCtor) && value instanceof (FileCtor as typeof File)
 }
 
-export function normalizeValueForSubmit(value: UnknownFormValue): UnknownFormValue {
-  // Keep File/boolean as-is; trim strings for better UX.
+export function normalizeValueForSubmit(
+  value: UnknownFormValue,
+): UnknownFormValue {
   if (typeof value === 'string') return value.trim()
   return value
 }
@@ -76,13 +77,17 @@ export function validateField(params: {
     let age = today.getFullYear() - birthDate.getFullYear()
     const monthDiff = today.getMonth() - birthDate.getMonth()
 
-    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+    if (
+      monthDiff < 0 ||
+      (monthDiff === 0 && today.getDate() < birthDate.getDate())
+    ) {
       age--
     }
 
     if (age < validation.minAge) {
       return (
-        errorMessages.minAge || `You must be at least ${validation.minAge} years old`
+        errorMessages.minAge ||
+        `You must be at least ${validation.minAge} years old`
       )
     }
   }
@@ -124,10 +129,11 @@ export function validateField(params: {
     // File size validation
     if (validation.maxSize && value.size > validation.maxSize) {
       const maxSizeMB = (validation.maxSize / (1024 * 1024)).toFixed(1)
-      return errorMessages.fileSize || `File size must be less than ${maxSizeMB}MB`
+      return (
+        errorMessages.fileSize || `File size must be less than ${maxSizeMB}MB`
+      )
     }
   }
 
   return undefined
 }
-

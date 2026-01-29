@@ -1,10 +1,10 @@
 // Form-builder schema facade.
 //
-// The JSON-schema parsing/conditional logic currently lives in `~/lib/schema-parser`.
+// The JSON-schema parsing/conditional logic currently lives in `app/lib/schema-parser.ts`.
 // This file provides a stable import surface for the form-builder feature.
 export {
   getConditionalRequiredFieldNames,
   getDependentOptions,
   isFieldConditionallyRequired,
   parseSchema,
-} from '~/lib/schema-parser'
+} from '../schema-parser'

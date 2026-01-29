@@ -10,7 +10,8 @@
     "postinstall": "nuxt prepare",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:coverage": "vitest run --coverage"
+    "test:coverage": "vitest run --coverage",
+    "test:coverage:lib": "vitest run --coverage --config vitest.lib.config.ts"
   },
   "dependencies": {
     "nuxt": "^4.3.0",
