@@ -83,8 +83,8 @@ const sections = [
 </script>
 
 <template>
-  <section class="grid grid-cols-2 gap-4">
-    <Card class="mb-6 shadow-none h-fit sticky top-45">
+  <section class="grid lg:grid-cols-2 gap-4">
+    <Card class="mb-6 shadow-none h-fit lg:sticky top-45">
       <CardHeader class="border-b">
         <CardTitle class="text-base">Schema input</CardTitle>
         <CardDescription> JSON schema parser </CardDescription>
