@@ -10,6 +10,13 @@ import type {
 } from '~/lib/form-builder/types'
 import { useFormBuilder } from '~/lib/form-builder/useFormBuilder'
 import { Button } from '../ui/button'
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '../ui/card'
 
 interface Props {
   schema: FormSchema
@@ -134,13 +141,6 @@ const sectionsToRender = computed(() => {
             </p>
           </div>
 
-          <div v-if="lastSubmitted" class="rounded-lg border bg-muted/30 p-4">
-            <p class="text-sm font-medium mb-2">Submitted data</p>
-            <pre class="text-xs overflow-auto whitespace-pre-wrap">{{
-              JSON.stringify(lastSubmitted, null, 2)
-            }}</pre>
-          </div>
-
           <Button
             variant="default"
             type="submit"
@@ -152,6 +152,20 @@ const sectionsToRender = computed(() => {
             <span v-if="isSubmitting">Submitting...</span>
             <span v-else>Submit</span>
           </Button>
+
+          <Card v-if="lastSubmitted" class="shadow-none">
+            <CardHeader class="border-b">
+              <CardTitle class="text-base">Submitted data</CardTitle>
+              <CardDescription>
+                This is the latest payload emitted by the form.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <pre class="text-xs overflow-auto whitespace-pre-wrap">{{
+                JSON.stringify(lastSubmitted, null, 2)
+              }}</pre>
+            </CardContent>
+          </Card>
         </div>
       </form>
     </div>

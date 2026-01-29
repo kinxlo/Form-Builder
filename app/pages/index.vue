@@ -4,9 +4,6 @@ import FormBuilder from '~/components/form-builder/FormBuilder.vue'
 import type { FormSchema } from '~/lib/form-builder/types'
 import { sampleSchema } from '~/lib/sample-schema'
 
-// SSR demo without custom server API code:
-// `useFetch()` runs during SSR, and Nuxt serializes the data into the payload.
-// On the client, hydration reuses that payload (no extra request needed).
 const fetchedAt = useState<string>('schemaFetchedAt', () =>
   new Date().toISOString(),
 )
@@ -22,13 +19,11 @@ const {
 
 const schema = computed<FormSchema>(() => schemaData.value ?? sampleSchema)
 
-// Demo-only grouping. Real apps should define their own sections.
 const sections = [
   {
     key: 'personal',
     title: 'Personal Information',
     filter: (field: { name: string }) => {
-      if (field.name.startsWith('vehicle_')) return false
       const vehicleRelated = new Set([
         'purchase_type',
         'proof_of_ownership_url',
@@ -39,7 +34,9 @@ const sections = [
         'chassis_number',
         'year_of_manufacture',
       ])
-      return !vehicleRelated.has(field.name)
+      return (
+        !field.name.startsWith('vehicle_') && !vehicleRelated.has(field.name)
+      )
     },
   },
   {
@@ -65,7 +62,7 @@ const sections = [
 
 <template>
   <div>
-    <div class="mb-4 rounded-lg border bg-muted/30 p-3 text-xs">
+    <!-- <div class="mb-4 rounded-lg border bg-muted/30 p-3 text-xs">
       <p class="font-medium">SSR demo (server fetch + client hydration)</p>
       <p v-if="schemaPending">
         Loading schema from <code>/sample-schema.json</code>…
@@ -85,7 +82,7 @@ const sections = [
         (<code>/sample-schema.json</code>), but during SSR Nuxt executes it on
         the server and hydrates the result on the client.
       </p>
-    </div>
+    </div> -->
 
     <FormBuilder :schema="schema" :sections="sections" />
   </div>
