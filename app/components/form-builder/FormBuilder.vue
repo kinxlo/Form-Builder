@@ -42,6 +42,33 @@ const isSubmitting = ref(false)
 const submitSuccess = ref(false)
 const lastSubmitted = ref<SubmitPayload | null>(null)
 
+type FieldGroup = 'personal' | 'vehicle'
+
+function getFieldGroup(fieldName: string): FieldGroup {
+  // Simple grouping strategy for the sample vehicle registration form.
+  // - Any `vehicle_*` field is treated as Vehicle information
+  // - Ownership / purchase / leasing fields are treated as Vehicle information
+  // - Everything else defaults to Personal information
+  if (fieldName.startsWith('vehicle_')) return 'vehicle'
+
+  const vehicleRelated = new Set([
+    'purchase_type',
+    'proof_of_ownership_url',
+    'lease_agreement_url',
+    'lessor_company_name',
+    'registration_number',
+    'engine_number',
+    'chassis_number',
+    'year_of_manufacture',
+  ])
+
+  return vehicleRelated.has(fieldName) ? 'vehicle' : 'personal'
+}
+
+function getGroupedFields(group: FieldGroup): FormFieldConfig[] {
+  return fields.value.filter((f) => getFieldGroup(f.name) === group)
+}
+
 watch(
   () => props.schema,
   () => {
@@ -341,31 +368,79 @@ function shouldShowField(_field: FormFieldConfig): boolean {
 </script>
 
 <template>
-  <div class="rounded-lg border bg-card text-card-foreground shadow">
-    <div class="p-6">
+  <div class="rounded-lg bg-card text-card-foreground ">
+    <div>
       <form @submit.prevent="handleSubmit" novalidate>
-        <div class="flex flex-col gap-4">
-          <template v-for="field in fields" :key="field.name">
-            <div
-              v-if="shouldShowField(field)"
-              :class="fieldClasses(!!errors[field.name])"
+        <div class="flex flex-col gap-6">
+          <fieldset class="rounded-lg border bg-card p-8">
+            <legend
+              class="px-2 text-sm font-semibold text-slate-900 dark:text-slate-100"
             >
-              <FormField
-                :config="field"
-                :model-value="values[field.name] ?? null"
-                :error="errors[field.name]"
-                :is-required="isRequiredForField(field)"
-                :dependent-options="
-                  field.dependsOn
-                    ? getDependentOptionsForField(field)
-                    : undefined
-                "
-                @update:model-value="
-                  (value) => handleFieldChange(field.name, value)
-                "
-              />
+              Personal Information
+            </legend>
+
+            <div class="flex flex-col gap-4 pt-2">
+              <template
+                v-for="field in getGroupedFields('personal')"
+                :key="field.name"
+              >
+                <div
+                  v-if="shouldShowField(field)"
+                  :class="fieldClasses(!!errors[field.name])"
+                >
+                  <FormField
+                    :config="field"
+                    :model-value="values[field.name] ?? null"
+                    :error="errors[field.name]"
+                    :is-required="isRequiredForField(field)"
+                    :dependent-options="
+                      field.dependsOn
+                        ? getDependentOptionsForField(field)
+                        : undefined
+                    "
+                    @update:model-value="
+                      (value) => handleFieldChange(field.name, value)
+                    "
+                  />
+                </div>
+              </template>
             </div>
-          </template>
+          </fieldset>
+
+          <fieldset class="rounded-lg border bg-card p-8">
+            <legend
+              class="px-2 text-sm font-semibold text-slate-900 dark:text-slate-100"
+            >
+              Vehicle Information
+            </legend>
+
+            <div class="flex flex-col gap-4 pt-2">
+              <template
+                v-for="field in getGroupedFields('vehicle')"
+                :key="field.name"
+              >
+                <div
+                  v-if="shouldShowField(field)"
+                  :class="fieldClasses(!!errors[field.name])"
+                >
+                  <FormField
+                    :config="field"
+                    :model-value="values[field.name] ?? null"
+                    :error="errors[field.name]"
+                    :is-required="isRequiredForField(field)"
+                    :dependent-options="
+                      field.dependsOn
+                        ? getDependentOptionsForField(field)
+                        : undefined
+                    "
+                    @update:model-value="
+                      (value) => handleFieldChange(field.name, value)
+                    "
+                  />
+                </div>
+              </template>
+            </div>
+          </fieldset>
 
           <p v-if="errors._form" class="text-sm text-destructive text-center">
             {{ errors._form }}

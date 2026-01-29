@@ -3,7 +3,7 @@ import ThemeToggle from '~/components/ThemeToggle.vue'
 </script>
 
 <template>
-  <div class="min-h-dvh bg-background text-foreground">
+  <div class="min-h-dvh text-foreground">
     <header
       class="border-b bg-card/60 backdrop-blur supports-backdrop-filter:bg-card/40"
     >
@@ -20,7 +20,7 @@ import ThemeToggle from '~/components/ThemeToggle.vue'
       </div>
     </header>
 
-    <main class="mx-auto w-full max-w-4xl p-4 lg:p-6">
+    <main class="mx-auto w-full max-w-5xl p-4 lg:p-6">
       <slot />
     </main>
   </div>
